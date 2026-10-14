@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pila de Fotos · Emanuel Mendoza</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-body-tertiary">
+
+  <nav class="navbar bg-primary navbar-dark mb-4" data-bs-theme="dark">
+    <div class="container">
+      <span class="navbar-brand mb-0 h1">
+        📸 Visualizador de Pila de Fotos (Stack)
+        <small class="d-block fs-6 fw-normal text-white-50">Por Emanuel Mendoza</small>
+      </span>
+      <button id="btn-reset" class="btn btn-outline-light btn-sm d-none" type="button">Reiniciar</button>
+    </div>
+  </nav>
+
+  <main class="container pb-5">
+
+    <!-- Paso 1: definir tamaño -->
+    <section id="setup-section" class="row justify-content-center d-none">
+      <div class="col-md-8 col-lg-5">
+        <div class="card shadow-sm">
+          <div class="card-body p-4">
+            <h2 class="h4 card-title">Crea tu pila</h2>
+            <p class="text-muted">Indica cuántas fotos podrá almacenar (1 a 20).</p>
+            <form id="setup-form" novalidate>
+              <label for="capacity" class="form-label">Tamaño de la pila</label>
+              <div class="input-group">
+                <input id="capacity" type="number" class="form-control" min="1" max="20" value="5" required>
+                <button class="btn btn-primary" type="submit">Crear pila</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Paso 2: operar la pila -->
+    <section id="stack-section" class="row g-4 d-none">
+
+      <div class="col-lg-5">
+        <div class="card shadow-sm">
+          <div class="card-header fw-semibold">Operaciones</div>
+          <div class="card-body">
+            <form id="push-form" class="mb-3" novalidate>
+              <label for="photo" class="form-label">Foto a agregar</label>
+              <input id="photo" type="file" class="form-control mb-2"
+                     accept="image/png,image/jpeg,image/gif,image/webp">
+              <div class="form-text mb-2">PNG, JPG, GIF o WEBP · máximo 5 MB.</div>
+
+              <div class="d-grid mb-2">
+                <button id="btn-camera" class="btn btn-outline-primary" type="button">
+                  📷 Tomar foto con la cámara
+                </button>
+              </div>
+
+              <img id="preview" class="img-thumbnail mb-2 d-none w-50" alt="Vista previa de la foto">
+
+              <div class="d-grid">
+                <button id="btn-push" class="btn btn-success" type="submit">Push · Apilar foto</button>
+              </div>
+            </form>
+
+            <hr>
+
+            <div class="d-grid gap-2">
+              <button id="btn-pop" class="btn btn-danger" type="button">Pop · Eliminar tope</button>
+              <button id="btn-peek" class="btn btn-info text-white" type="button">Peek · Ver tope</button>
+              <div class="row g-2">
+                <div class="col-6 d-grid">
+                  <button id="btn-empty" class="btn btn-outline-secondary" type="button">¿Está vacía?</button>
+                </div>
+                <div class="col-6 d-grid">
+                  <button id="btn-size" class="btn btn-outline-secondary" type="button">Tamaño</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-7">
+        <div class="card shadow-sm">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <span class="fw-semibold">Pila</span>
+            <span id="badge-status" class="badge text-bg-secondary">Vacía</span>
+          </div>
+          <div class="card-body">
+            <div class="d-flex justify-content-between small text-muted mb-1">
+              <span>Ocupación</span>
+              <span id="usage-label">0 / 0</span>
+            </div>
+            <div class="progress mb-3" role="progressbar" aria-label="Ocupación de la pila">
+              <div id="usage-bar" class="progress-bar" style="width: 0%"></div>
+            </div>
+            <ul id="stack-view" class="list-group"></ul>
+            <p class="text-center text-muted small mt-2 mb-0">⬆ Tope · Base ⬇</p>
+          </div>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- Ventana de la cámara -->
+  <div class="modal fade" id="camera-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 class="modal-title h5">Tomar foto con la cámara</h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <video id="camera-video" class="w-100 rounded bg-dark" autoplay playsinline muted></video>
+          <canvas id="camera-canvas" class="d-none"></canvas>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button id="btn-capture" type="button" class="btn btn-primary">📸 Capturar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ventana para Peek -->
+  <div class="modal fade" id="peek-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 class="modal-title h5">Foto en el tope de la pila</h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body text-center">
+          <img id="peek-img" class="img-fluid rounded" alt="">
+          <p id="peek-name" class="text-muted mt-2 mb-0"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toasts" class="toast-container position-fixed top-0 end-0 p-3"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const MAX_SIZE = 5 * 1024 * 1024;
+
+    let selectedFile = null;   // foto lista para apilar (de archivo o de cámara)
+    let previewUrl = null;
+    let cameraStream = null;
+
+    // ---------- Utilidades ----------
+    async function api(url, method = "GET", body) {
+      const options = { method };
+      if (body instanceof FormData) {
+        options.body = body; // el navegador pone el Content-Type correcto
+      } else if (body) {
+        options.headers = { "Content-Type": "application/json" };
+        options.body = JSON.stringify(body);
+      }
+      const res = await fetch(url, options);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Error inesperado.");
+      return data;
+    }
+
+    function notify(message, type = "primary") {
+      const el = document.createElement("div");
+      el.className = `toast align-items-center text-bg-${type} border-0`;
+      el.setAttribute("role", "alert");
+
+      const wrap = document.createElement("div");
+      wrap.className = "d-flex";
+      const body = document.createElement("div");
+      body.className = "toast-body";
+      body.textContent = message; // textContent evita inyección de HTML
+      const close = document.createElement("button");
+      close.type = "button";
+      close.className = "btn-close btn-close-white me-2 m-auto";
+      close.setAttribute("data-bs-dismiss", "toast");
+
+      wrap.append(body, close);
+      el.append(wrap);
+      $("toasts").append(el);
+      el.addEventListener("hidden.bs.toast", () => el.remove());
+      new bootstrap.Toast(el, { delay: 3500 }).show();
+    }
+
+    function makeEmptySlot() {
+      const li = document.createElement("li");
+      li.className = "list-group-item list-group-item-light text-center text-muted fst-italic py-4";
+      li.textContent = "espacio libre";
+      return li;
+    }
+
+    function makePhotoSlot(photo, isTop) {
+      const li = document.createElement("li");
+      li.className = `list-group-item d-flex align-items-center gap-3 py-2 ${isTop ? "active" : ""}`;
+
+      const box = document.createElement("div");
+      box.className = "ratio ratio-4x3 w-25 flex-shrink-0";
+      const img = document.createElement("img");
+      img.src = photo.url;
+      img.alt = photo.name;
+      img.className = "object-fit-cover rounded";
+      box.append(img);
+
+      const label = document.createElement("span");
+      label.className = "flex-grow-1 text-truncate fw-semibold";
+      label.textContent = photo.name;
+
+      li.append(box, label);
+
+      if (isTop) {
+        const tag = document.createElement("span");
+        tag.className = "badge text-bg-light";
+        tag.textContent = "TOPE";
+        li.append(tag);
+      }
+      return li;
+    }
+
+    // ---------- Foto seleccionada (archivo o cámara) ----------
+    function clearSelection() {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      previewUrl = null;
+      selectedFile = null;
+      $("preview").classList.add("d-none");
+      $("preview").removeAttribute("src");
+      $("photo").value = "";
+    }
+
+    function setSelectedFile(file) {
+      if (!file) return clearSelection();
+      if (file.size > MAX_SIZE) {
+        notify("La foto supera el límite de 5 MB.", "danger");
+        return clearSelection();
+      }
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      selectedFile = file;
+      previewUrl = URL.createObjectURL(file);
+      $("preview").src = previewUrl;
+      $("preview").classList.remove("d-none");
+    }
+
+    // ---------- Cámara ----------
+    async function startCamera() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        notify("Tu navegador no permite usar la cámara.", "danger");
+        return false;
+      }
+      try {
+        cameraStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        $("camera-video").srcObject = cameraStream;
+        return true;
+      } catch (err) {
+        const messages = {
+          NotAllowedError: "Permiso de cámara denegado. Actívalo en el candado de la barra de direcciones.",
+          NotFoundError: "No se encontró ninguna cámara.",
+          NotReadableError: "La cámara está siendo usada por otra aplicación.",
+        };
+        notify(messages[err.name] || "No se pudo acceder a la cámara.", "danger");
+        return false;
+      }
+    }
+
+    function stopCamera() {
+      if (cameraStream) cameraStream.getTracks().forEach((track) => track.stop());
+      cameraStream = null;
+      $("camera-video").srcObject = null;
+    }
+
+    function capturePhoto() {
+      const video = $("camera-video");
+      if (!video.videoWidth) {
+        return notify("La cámara aún no está lista, espera un segundo.", "warning");
+      }
+      const canvas = $("camera-canvas");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      canvas.toBlob((blob) => {
+        if (!blob) return notify("No se pudo capturar la foto.", "danger");
+        const d = new Date();
+        const stamp = [d.getHours(), d.getMinutes(), d.getSeconds()]
+          .map((n) => String(n).padStart(2, "0")).join("");
+        const file = new File([blob], `foto-${stamp}.jpg`, { type: "image/jpeg" });
+        $("photo").value = "";
+        setSelectedFile(file);
+        bootstrap.Modal.getOrCreateInstance($("camera-modal")).hide();
+        notify("Foto capturada. Presiona Push para apilarla.", "info");
+      }, "image/jpeg", 0.92);
+    }
+
+    // ---------- Render ----------
+    function render(state) {
+      const configured = state.configured;
+      $("setup-section").classList.toggle("d-none", configured);
+      $("stack-section").classList.toggle("d-none", !configured);
+      $("btn-reset").classList.toggle("d-none", !configured);
+      if (!configured) return;
+
+      const { capacity, items, size, is_empty, is_full } = state;
+      const percent = Math.round((size / capacity) * 100);
+
+      $("usage-label").textContent = `${size} / ${capacity}`;
+      const bar = $("usage-bar");
+      bar.style.width = `${percent}%`;
+      bar.className = "progress-bar " + (is_full ? "bg-danger" : percent >= 70 ? "bg-warning" : "bg-success");
+
+      const badge = $("badge-status");
+      badge.textContent = is_full ? "Llena" : is_empty ? "Vacía" : "Con fotos";
+      badge.className = "badge " + (is_full ? "text-bg-danger" : is_empty ? "text-bg-secondary" : "text-bg-success");
+
+      const view = $("stack-view");
+      view.replaceChildren();
+
+      // Espacios libres arriba
+      for (let i = 0; i < capacity - size; i++) view.append(makeEmptySlot());
+      // Fotos: el tope primero
+      [...items].reverse().forEach((photo, index) => view.append(makePhotoSlot(photo, index === 0)));
+
+      // Habilitar / deshabilitar según el estado
+      $("btn-push").disabled = is_full;
+      $("photo").disabled = is_full;
+      $("btn-camera").disabled = is_full;
+      $("btn-pop").disabled = is_empty;
+      $("btn-peek").disabled = is_empty;
+    }
+
+    // Ejecuta una acción de la API, muestra el mensaje y actualiza la vista
+    async function run(action, type = "primary") {
+      try {
+        const data = await action();
+        if (data.message) notify(data.message, type);
+        render(data.state);
+        return data;
+      } catch (err) {
+        notify(err.message, "danger");
+      }
+    }
+
+    // ---------- Eventos ----------
+    $("setup-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      run(() => api("/api/stack", "POST", { capacity: $("capacity").value }), "success");
+    });
+
+    $("photo").addEventListener("change", () => setSelectedFile($("photo").files[0]));
+
+    $("btn-camera").addEventListener("click", async () => {
+      if (await startCamera()) {
+        bootstrap.Modal.getOrCreateInstance($("camera-modal")).show();
+      }
+    });
+    $("btn-capture").addEventListener("click", capturePhoto);
+    $("camera-modal").addEventListener("hidden.bs.modal", stopCamera); // apaga la cámara al cerrar
+
+    $("push-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!selectedFile) return notify("Selecciona o toma una foto para apilar.", "danger");
+
+      const form = new FormData();
+      form.append("photo", selectedFile, selectedFile.name);
+      const data = await run(() => api("/api/stack/push", "POST", form), "success");
+      if (data) clearSelection();
+    });
+
+    $("btn-pop").addEventListener("click", () => run(() => api("/api/stack/pop", "POST"), "warning"));
+
+    $("btn-peek").addEventListener("click", async () => {
+      const data = await run(() => api("/api/stack/peek"), "info");
+      if (data && data.value) {
+        $("peek-img").src = data.value.url;
+        $("peek-img").alt = data.value.name;
+        $("peek-name").textContent = data.value.name;
+        bootstrap.Modal.getOrCreateInstance($("peek-modal")).show();
+      }
+    });
+
+    $("btn-empty").addEventListener("click", () => run(() => api("/api/stack/is-empty"), "secondary"));
+    $("btn-size").addEventListener("click", () => run(() => api("/api/stack/size"), "secondary"));
+    $("btn-reset").addEventListener("click", () => {
+      if (confirm("¿Seguro que quieres reiniciar la pila? Se borrarán las fotos.")) {
+        clearSelection();
+        run(() => api("/api/stack", "DELETE"), "secondary");
+      }
+    });
+
+    // ---------- Inicio ----------
+    run(() => api("/api/stack"));
+  </script>
+</body>
+</html>
