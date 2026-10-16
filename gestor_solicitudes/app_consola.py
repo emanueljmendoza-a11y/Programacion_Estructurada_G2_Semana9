@@ -1,5 +1,5 @@
-cola_pendientes = []   # COLA (FIFO): entra por el final, sale por el inicio
-pila_historial = []    # PILA (LIFO): entra por el final, sale por el final
+cola_pendientes = []   
+pila_historial = []    
 siguiente_id = 1
 
 
@@ -30,7 +30,7 @@ def registrar_solicitud(cliente, asunto):
         "asunto": asunto.strip(),
         "estado": "pendiente"
     }
-    cola_pendientes.append(solicitud)      # entra al final de la cola
+    cola_pendientes.append(solicitud)      
     siguiente_id += 1
     return solicitud
 
@@ -39,9 +39,8 @@ def atender_siguiente():
     if not cola_pendientes:
         return None
 
-    solicitud = cola_pendientes.pop(0)     # sale el más antiguo (FIFO)
-    solicitud["estado"] = "atendida"
-    pila_historial.append(solicitud)       # se apila para poder deshacer
+    solicitud = cola_pendientes.pop(0)     
+    pila_historial.append(solicitud)       
     return solicitud
 
 

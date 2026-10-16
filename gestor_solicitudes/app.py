@@ -61,7 +61,7 @@ def deshacer():
     if logica.deshacer_ultima_atencion():
         flash("Última atención deshecha.", "success")
     else:
-        flash("No hay atenciones que deshacer.", "warning")
+        flash("No hay nada atenciones que deshacer.", "warning")
     return redirect(url_for("inicio"))
 
 
@@ -70,7 +70,7 @@ def cancelar(id):
     if logica.cancelar_solicitud(id):
         flash(f"Solicitud #{id} cancelada.", "success")
     else:
-        flash(f"No existe la solicitud pendiente #{id}.", "warning")
+        flash(f"No hay ni existe la solicitud pendiente #{id}.", "warning")
     return redirect(url_for("inicio"))
 
 
