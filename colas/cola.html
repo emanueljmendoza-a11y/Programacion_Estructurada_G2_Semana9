@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cola</title>
+<style>
+  body {
+    font-family: system-ui, sans-serif;
+    background: #f3f5f7;
+    color: #1d2733;
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 24px 16px;
+  }
+  .panel {
+    background: #fff;
+    border: 1px solid #d5dbe2;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .fila { display: flex; gap: 8px; flex-wrap: wrap; }
+  input {
+    flex: 1 1 160px;
+    padding: 10px 12px;
+    font-size: 1rem;
+    border: 1px solid #d5dbe2;
+    border-radius: 6px;
+  }
+  button {
+    padding: 10px 16px;
+    font-size: 1rem;
+    border: 1px solid #1f6feb;
+    border-radius: 6px;
+    background: #1f6feb;
+    color: #fff;
+    cursor: pointer;
+  }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  #cola { display: flex; gap: 8px; flex-wrap: wrap; list-style: none; padding: 0; margin: 0; }
+  #cola li {
+    padding: 12px 14px;
+    border: 2px solid #1f6feb;
+    border-radius: 6px;
+    font-weight: 700;
+  }
+  #cola li:first-child { background: #1f6feb; color: #fff; }
+  .oculto { display: none; }
+  #mensaje, #estado-voz { color: #5d6b7a; min-height: 1.4em; }
+</style>
+</head>
+<body>
+
+  <h1>Cola</h1>
+
+  <!-- Pantalla 1: pedir el nombre (escrito o por voz) -->
+  <section class="panel" id="pantalla-nombre">
+    <label for="nombre"><b>¿Cómo te llamas?</b></label>
+    <div class="fila">
+      <input type="text" id="nombre" placeholder="Di tu nombre o escríbelo">
+      <button id="btn-voz">🎤 Hablar</button>
+      <button id="btn-entrar">Entrar</button>
+    </div>
+    <p id="estado-voz"></p>
+  </section>
+
+  <!-- Pantalla 2: la cola -->
+  <div id="pantalla-cola" class="oculto">
+    <section class="panel">
+      <p id="saludo"></p>
+      <div class="fila">
+        <input type="number" id="valor" placeholder="Número a encolar">
+        <button id="btn-encolar">Encolar</button>
+        <button id="btn-desencolar">Desencolar</button>
+      </div>
+      <p id="mensaje"></p>
+    </section>
+
+    <section class="panel">
+      <ul id="cola"></ul>
+      <p>¿Está vacía? <b id="vacia"></b></p>
+      <p>Cola: <code id="texto"></code></p>
+    </section>
+  </div>
+
+<script>
+  // ----- Misma lógica que tu cola1.py -----
+  const cola = [];
+
+  function encolar(queue, element) {
+    queue.push(element);
+  }
+
+  function desencolar(queue) {
+    if (queue.length === 0) {
+      return null;
+    }
+    return queue.shift();
+  }
+
+  function estaVacia(queue) {
+    return queue.length === 0;
+  }
+
+  function mostrarCola(queue) {
+    return "[" + queue.join(", ") + "]";
+  }
+
+  // ----- Interfaz -----
+  let nombre = "";
+
+  function pintar() {
+    const ul = document.getElementById("cola");
+    ul.innerHTML = "";
+    cola.forEach(function (n) {
+      const li = document.createElement("li");
+      li.textContent = n;
+      ul.appendChild(li);
+    });
+    document.getElementById("vacia").textContent = estaVacia(cola) ? "Sí" : "No";
+    document.getElementById("texto").textContent = mostrarCola(cola);
+  }
+
+  // ----- Dictado de voz para el nombre -----
+  const Reconocimiento = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const btnVoz = document.getElementById("btn-voz");
+  const estadoVoz = document.getElementById("estado-voz");
+
+  if (!Reconocimiento) {
+    btnVoz.disabled = true;
+    estadoVoz.textContent = "Tu navegador no soporta dictado de voz. Usa Chrome o Edge.";
+  } else {
+    const reconocimiento = new Reconocimiento();
+    reconocimiento.lang = "es-NI";
+    reconocimiento.interimResults = false;
+    reconocimiento.maxAlternatives = 1;
+
+    btnVoz.addEventListener("click", function () {
+      try {
+        estadoVoz.textContent = "Escuchando... di tu nombre.";
+        reconocimiento.start();
+      } catch (e) {
+        estadoVoz.textContent = "Ya está escuchando, habla ahora.";
+      }
+    });
+
+    reconocimiento.onresult = function (evento) {
+      let texto = evento.results[0][0].transcript.trim();
+      texto = texto.replace(/[.,!?]$/, "");
+      document.getElementById("nombre").value = texto;
+      estadoVoz.textContent = "Escuché: " + texto + ". Presiona Entrar.";
+    };
+
+    reconocimiento.onerror = function (evento) {
+      estadoVoz.textContent = "No se pudo escuchar (" + evento.error + "). Revisa el permiso del micrófono.";
+    };
+  }
+
+  // ----- Botones -----
+  document.getElementById("btn-entrar").addEventListener("click", function () {
+    const valor = document.getElementById("nombre").value.trim();
+    if (valor === "") {
+      alert("Escribe o di tu nombre para continuar.");
+      return;
+    }
+    nombre = valor;
+    document.getElementById("saludo").textContent = "Hola, " + nombre + ". Ya puedes usar tu cola.";
+    document.getElementById("pantalla-nombre").classList.add("oculto");
+    document.getElementById("pantalla-cola").classList.remove("oculto");
+    pintar();
+  });
+
+  document.getElementById("btn-encolar").addEventListener("click", function () {
+    const campo = document.getElementById("valor");
+    if (campo.value === "") {
+      document.getElementById("mensaje").textContent = "Escribe un número para encolar.";
+      return;
+    }
+    const n = Number(campo.value);
+    encolar(cola, n);
+    document.getElementById("mensaje").textContent = nombre + ", encolaste el " + n + ".";
+    campo.value = "";
+    pintar();
+  });
+
+  document.getElementById("btn-desencolar").addEventListener("click", function () {
+    const sacado = desencolar(cola);
+    if (sacado === null) {
+      document.getElementById("mensaje").textContent = nombre + ", la cola está vacía.";
+    } else {
+      document.getElementById("mensaje").textContent = nombre + ", desencolaste el " + sacado + ".";
+    }
+    pintar();
+  });
+</script>
+
+</body>
+</html>
